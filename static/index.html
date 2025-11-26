@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Agent_Bank - Connect Your Bank</title>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+
+  <style>
+      * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+      }
+
+      body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+      }
+
+      .container {
+          background: white;
+          border-radius: 20px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+          padding: 60px 40px;
+          max-width: 500px;
+          width: 90%;
+          text-align: center;
+      }
+
+      .logo {
+          font-size: 48px;
+          margin-bottom: 20px;
+      }
+
+      h1 {
+          color: #333;
+          font-size: 32px;
+          margin-bottom: 10px;
+      }
+
+      .subtitle {
+          color: #666;
+          font-size: 16px;
+          margin-bottom: 40px;
+      }
+
+      .connect-btn {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 18px 40px;
+          border-radius: 50px;
+          font-size: 18px;
+          font-weight: bold;
+          border: none;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .connect-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      }
+
+      .connect-btn:disabled {
+          background: #ccc;
+          cursor: not-allowed;
+          box-shadow: none;
+      }
+
+      .sandbox-info {
+          background: #f0f8ff;
+          padding: 20px;
+          border-radius: 12px;
+          margin: 30px 0;
+          border-left: 4px solid #667eea;
+          text-align: left;
+      }
+
+      .sandbox-info h3 {
+          margin-top: 0;
+          color: #667eea;
+          font-size: 16px;
+      }
+
+      .sandbox-info ul {
+          margin: 10px 0 0 20px;
+      }
+
+      .sandbox-info li {
+          margin: 5px 0;
+          color: #555;
+      }
+
+      code {
+          background: #e0e0e0;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-family: 'Courier New', monospace;
+          font-size: 14px;
+      }
+
+      .status {
+          padding: 15px;
+          margin: 20px 0;
+          border-radius: 8px;
+          display: none;
+          font-size: 14px;
+      }
+
+      .status.success {
+          background: #d4edda;
+          color: #155724;
+          border: 1px solid #c3e6cb;
+          display: block;
+      }
+
+      .status.error {
+          background: #f8d7da;
+          color: #721c24;
+          border: 1px solid #f5c6cb;
+          display: block;
+      }
+
+      .status.info {
+          background: #d1ecf1;
+          color: #0c5460;
+          border: 1px solid #bee5eb;
+          display: block;
+      }
+
+      .loader {
+          border: 3px solid #f3f3f3;
+          border-top: 3px solid #667eea;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          animation: spin 1s linear infinite;
+          display: inline-block;
+          vertical-align: middle;
+          margin-right: 10px;
+      }
+
+      @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+      }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="logo">🏦</div>
+    <h1>Bank AI Assistant</h1>
+    <p class="subtitle">Connect your bank account to get started with AI-powered financial insights</p>
+
+    <div class="sandbox-info">
+      <h3>🧪 Sandbox Test Credentials</h3>
+      <ul>
+        <li>Username: <code>user_good</code></li>
+        <li>Password: <code>pass_good</code></li>
+      </ul>
+      <small style="color: #666;">Use these credentials to test with sample banking data</small>
+    </div>
+
+    <button id="connectBtn" class="connect-btn">
+      🔗 Connect Bank Account
+    </button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerHTML = message;
+      statusDiv.className = `status ${type}`;
+    }
+
+    document.getElementById("connectBtn").onclick = async () => {
+      const btn = document.getElementById('connectBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loader"></span>Connecting...';
+      
+      showStatus('Creating secure connection...', 'info');
+
+      try {
+        // 1️⃣ Create link token
+        const r = await fetch("/create_link_token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}"
+        });
+
+        const data = await r.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        const linkToken = data.link_token;
+
+        // 2️⃣ Initialize Plaid Link
+        const handler = Plaid.create({
+          token: linkToken,
+
+          onSuccess: async function(public_token, metadata) {
+            showStatus('Exchanging tokens...', 'info');
+
+            // 3️⃣ Exchange public_token → item_id
+            const exchangeResp = await fetch("/exchange_public_token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ public_token })
+            });
+
+            const exchangeData = await exchangeResp.json();
+            
+            if (exchangeData.error) {
+              throw new Error(exchangeData.error);
+            }
+
+            const itemId = exchangeData.item_id;
+
+            showStatus('Fetching your financial data...', 'info');
+
+            // 4️⃣ Fetch all data
+            const fetchResp = await fetch("/fetch_all_data", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ item_id: itemId })
+            });
+
+            const fetchData = await fetchResp.json();
+
+            if (fetchData.error) {
+              throw new Error(fetchData.error);
+            }
+
+            // 5️⃣ Store item_id and redirect to chat
+            sessionStorage.setItem('item_id', itemId);
+            sessionStorage.setItem('accounts_count', fetchData.summary?.accounts?.accounts_count || 0);
+            sessionStorage.setItem('transactions_count', fetchData.summary?.accounts?.transactions_count || 0);
+
+            showStatus('✅ Success! Redirecting to chat...', 'success');
+
+            // Redirect after 1 second
+            setTimeout(() => {
+              window.location.href = '/chat_page';
+            }, 1000);
+          },
+
+          onExit: (err) => {
+            btn.disabled = false;
+            btn.innerHTML = '🔗 Connect Bank Account';
+            
+            if (err) {
+              showStatus(`❌ Connection cancelled: ${err.error_message || 'User exited'}`, 'error');
+            } else {
+              showStatus('Connection cancelled', 'info');
+            }
+          }
+        });
+
+        handler.open();
+        
+        btn.disabled = false;
+        btn.innerHTML = '🔗 Connect Bank Account';
+
+      } catch (error) {
+        btn.disabled = false;
+        btn.innerHTML = '🔗 Connect Bank Account';
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    };
+  </script>
+
+</body>
+</html>

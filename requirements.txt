@@ -1,0 +1,12 @@
+Flask
+Flask-Cors
+python-dotenv
+pyodbc
+plaid-python
+azure-ai-openai
+schedule
+pydantic
+pandas
+loguru
+python-dateutil
+openai

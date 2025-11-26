@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Bank - AI Banking Assistant</title>
+  
+  <style>
+      * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+      }
+
+      body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background: #f5f7fa;
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+      }
+
+      /* Header */
+      .header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 20px 30px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+      }
+
+      .header h1 {
+          font-size: 24px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+      }
+
+      .header-info {
+          display: flex;
+          gap: 20px;
+          align-items: center;
+          font-size: 14px;
+      }
+
+      .info-badge {
+          background: rgba(255,255,255,0.2);
+          padding: 6px 12px;
+          border-radius: 20px;
+      }
+
+      .disconnect-btn {
+          background: rgba(255,255,255,0.2);
+          color: white;
+          border: 1px solid rgba(255,255,255,0.3);
+          padding: 8px 16px;
+          border-radius: 20px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: background 0.3s;
+      }
+
+      .disconnect-btn:hover {
+          background: rgba(255,255,255,0.3);
+      }
+
+      /* Main Container */
+      .main-container {
+          display: flex;
+          flex: 1;
+          overflow: hidden;
+      }
+
+      /* Chat Container */
+      .chat-container {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          background: white;
+          margin: 20px;
+          border-radius: 12px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+          overflow: hidden;
+      }
+
+      /* Messages Area */
+      .messages-area {
+          flex: 1;
+          overflow-y: auto;
+          padding: 30px;
+          background: #fafbfc;
+      }
+
+      .message {
+          margin: 20px 0;
+          display: flex;
+          gap: 12px;
+          animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+          from {
+              opacity: 0;
+              transform: translateY(10px);
+          }
+          to {
+              opacity: 1;
+              transform: translateY(0);
+          }
+      }
+
+      .message.user {
+          flex-direction: row-reverse;
+      }
+
+      .message-avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+          flex-shrink: 0;
+      }
+
+      .message.user .message-avatar {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .message.assistant .message-avatar {
+          background: #f0f0f0;
+      }
+
+      .message-content {
+          max-width: 70%;
+          padding: 15px 20px;
+          border-radius: 18px;
+          line-height: 1.8;
+      }
+
+      .message.user .message-content {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border-bottom-right-radius: 4px;
+      }
+
+      .message.assistant .message-content {
+          background: white;
+          color: #333;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          border-bottom-left-radius: 4px;
+      }
+
+      .message-content strong {
+          color: #333;
+          font-weight: 600;
+      }
+
+      .agent-badge {
+          display: inline-block;
+          background: #667eea;
+          color: white;
+          padding: 3px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          margin-bottom: 8px;
+          font-weight: 600;
+      }
+
+      .typing-indicator {
+          display: flex;
+          gap: 4px;
+          padding: 10px;
+      }
+
+      .typing-indicator span {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #999;
+          animation: typing 1.4s infinite;
+      }
+
+      .typing-indicator span:nth-child(2) {
+          animation-delay: 0.2s;
+      }
+
+      .typing-indicator span:nth-child(3) {
+          animation-delay: 0.4s;
+      }
+
+      @keyframes typing {
+          0%, 60%, 100% {
+              transform: translateY(0);
+          }
+          30% {
+              transform: translateY(-10px);
+          }
+      }
+
+      /* Input Area */
+      .input-area {
+          padding: 20px 30px;
+          background: white;
+          border-top: 1px solid #e0e0e0;
+          display: flex;
+          gap: 15px;
+          align-items: center;
+      }
+
+      .input-area input {
+          flex: 1;
+          padding: 15px 20px;
+          border: 2px solid #e0e0e0;
+          border-radius: 25px;
+          font-size: 15px;
+          outline: none;
+          transition: border-color 0.3s;
+      }
+
+      .input-area input:focus {
+          border-color: #667eea;
+      }
+
+      .send-btn {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          padding: 15px 30px;
+          border-radius: 25px;
+          cursor: pointer;
+          font-size: 15px;
+          font-weight: 600;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .send-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .send-btn:disabled {
+          background: #ccc;
+          cursor: not-allowed;
+          box-shadow: none;
+          transform: none;
+      }
+
+      /* Welcome Message */
+      .welcome-message {
+          text-align: center;
+          padding: 60px 20px;
+          color: #666;
+      }
+
+      .welcome-message h2 {
+          font-size: 28px;
+          color: #333;
+          margin-bottom: 10px;
+      }
+
+      .welcome-message p {
+          font-size: 16px;
+          margin-bottom: 20px;
+          line-height: 1.6;
+      }
+
+      .welcome-message .suggestions {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          max-width: 500px;
+          margin: 30px auto 0;
+      }
+
+      .suggestion-btn {
+          background: white;
+          border: 2px solid #e0e0e0;
+          padding: 12px 20px;
+          border-radius: 12px;
+          cursor: pointer;
+          font-size: 14px;
+          color: #555;
+          transition: all 0.3s;
+          text-align: left;
+      }
+
+      .suggestion-btn:hover {
+          border-color: #667eea;
+          color: #667eea;
+          transform: translateX(5px);
+      }
+
+      /* Scrollbar */
+      .messages-area::-webkit-scrollbar {
+          width: 6px;
+      }
+
+      .messages-area::-webkit-scrollbar-track {
+          background: #f1f1f1;
+      }
+
+      .messages-area::-webkit-scrollbar-thumb {
+          background: #888;
+          border-radius: 3px;
+      }
+
+      .messages-area::-webkit-scrollbar-thumb:hover {
+          background: #555;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+          .message-content {
+              max-width: 85%;
+          }
+
+          .header h1 {
+              font-size: 18px;
+          }
+
+          .header-info {
+              gap: 10px;
+              font-size: 12px;
+          }
+      }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>
+      <span>🏦</span>
+      <span>Bank AI Assistant</span>
+    </h1>
+    <div class="header-info">
+      <div class="info-badge" id="accountsBadge">📊 Loading...</div>
+      <div class="info-badge" id="transactionsBadge">💳 Loading...</div>
+      <button class="disconnect-btn" onclick="disconnect()">🚪 Disconnect</button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="main-container">
+
+    <!-- Chat Container -->
+    <div class="chat-container">
+      
+      <!-- Messages Area -->
+      <div class="messages-area" id="messagesArea">
+        <div class="welcome-message">
+          <h2>👋 Welcome to Bank AI Assistant!</h2>
+          <p>I'm your personal financial advisor. Ask me anything about your finances in natural language, and I'll give you clear, concise answers.</p>
+          <div class="suggestions">
+            <button class="suggestion-btn" onclick="sendSuggestion('What\'s my current balance?')">
+              💰 What's my current balance?
+            </button>
+            <button class="suggestion-btn" onclick="sendSuggestion('Can I afford a $25,000 car?')">
+              🚗 Can I afford a $25,000 car?
+            </button>
+            <button class="suggestion-btn" onclick="sendSuggestion('Where is my money going?')">
+              📊 Where is my money going?
+            </button>
+            <button class="suggestion-btn" onclick="sendSuggestion('Show me my recent spending')">
+              💳 Show me my recent spending
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-area">
+        <input 
+          type="text" 
+          id="messageInput" 
+          placeholder="Ask me anything about your finances..." 
+          autocomplete="off"
+        />
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          Send
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    let itemId = null;
+
+    // Check if user is authenticated
+    window.onload = function() {
+      itemId = sessionStorage.getItem('item_id');
+      
+      if (!itemId) {
+        alert('Please connect your bank account first');
+        window.location.href = '/';
+        return;
+      }
+
+      // Load account info
+      const accountsCount = sessionStorage.getItem('accounts_count') || 0;
+      const transactionsCount = sessionStorage.getItem('transactions_count') || 0;
+      
+      document.getElementById('accountsBadge').textContent = `📊 ${accountsCount} Accounts`;
+      document.getElementById('transactionsBadge').textContent = `💳 ${transactionsCount} Transactions`;
+    };
+
+    // Send suggested question
+    function sendSuggestion(text) {
+      document.getElementById('messageInput').value = text;
+      sendMessage();
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const message = input.value.trim();
+      
+      if (!message || !itemId) return;
+
+      // Disable input
+      input.disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+
+      // Add user message
+      addMessage(message, 'user');
+      input.value = '';
+
+      // Add typing indicator
+      const typingId = 'typing-' + Date.now();
+      addTypingIndicator(typingId);
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: itemId,
+            message: message
+          })
+        });
+
+        const data = await response.json();
+
+        // Remove typing indicator
+        document.getElementById(typingId)?.remove();
+
+        if (data.success) {
+          addMessage(data.response, 'assistant', data.agent_used);
+        } else {
+          addMessage(`Sorry, I encountered an error: ${data.error}`, 'assistant');
+        }
+
+      } catch (error) {
+        document.getElementById(typingId)?.remove();
+        addMessage(`Error: ${error.message}`, 'assistant');
+      } finally {
+        input.disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        input.focus();
+      }
+    }
+
+    function addTypingIndicator(id) {
+      const messagesArea = document.getElementById('messagesArea');
+      
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message assistant';
+      messageDiv.id = id;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      avatar.textContent = '🤖';
+
+      const content = document.createElement('div');
+      content.className = 'message-content';
+
+      const typing = document.createElement('div');
+      typing.className = 'typing-indicator';
+      typing.innerHTML = '<span></span><span></span><span></span>';
+
+      content.appendChild(typing);
+      messageDiv.appendChild(avatar);
+      messageDiv.appendChild(content);
+
+      messagesArea.appendChild(messageDiv);
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    function addMessage(text, sender, agent = null) {
+      const messagesArea = document.getElementById('messagesArea');
+      
+      // Remove welcome message if exists
+      const welcome = messagesArea.querySelector('.welcome-message');
+      if (welcome) welcome.remove();
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${sender}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      avatar.textContent = sender === 'user' ? '👤' : '🤖';
+
+      const content = document.createElement('div');
+      content.className = 'message-content';
+
+      if (agent && sender === 'assistant') {
+        const badge = document.createElement('div');
+        badge.className = 'agent-badge';
+        badge.textContent = agent;
+        content.appendChild(badge);
+      }
+
+      const textNode = document.createElement('div');
+      
+      // Format the text if it's from assistant
+      if (sender === 'assistant') {
+        textNode.innerHTML = formatAssistantMessage(text);
+      } else {
+        textNode.textContent = text;
+      }
+      
+      content.appendChild(textNode);
+
+      messageDiv.appendChild(avatar);
+      messageDiv.appendChild(content);
+
+      messagesArea.appendChild(messageDiv);
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    // Format assistant messages - simple and clean for voice
+    function formatAssistantMessage(text) {
+      // Replace **bold** with <strong>
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      
+      // Highlight dollar amounts
+      text = text.replace(/(\$[\d,]+\.?\d*)/g, '<span style="color: #667eea; font-weight: 600;">$1</span>');
+      
+      // Highlight percentages
+      text = text.replace(/(\d+\.?\d*%)/g, '<span style="color: #667eea; font-weight: 600;">$1</span>');
+      
+      // Simple line breaks (but don't overdo it)
+      text = text.replace(/\n\n/g, '<br><br>');
+      
+      return text;
+    }
+
+    function disconnect() {
+      if (confirm('Are you sure you want to disconnect? You will need to reconnect your bank account.')) {
+        sessionStorage.clear();
+        window.location.href = '/';
+      }
+    }
+
+    // Enter key to send
+    document.getElementById('messageInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  </script>
+
+</body>
+</html>
