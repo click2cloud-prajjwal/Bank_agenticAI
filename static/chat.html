@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Bank - AI Banking Assistant</title>
+  <title>Bank AI - Chat</title>
   
   <style>
       * {
@@ -19,7 +19,6 @@
           flex-direction: column;
       }
 
-      /* Header */
       .header {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;
@@ -50,7 +49,7 @@
           border-radius: 20px;
       }
 
-      .disconnect-btn {
+      .logout-btn {
           background: rgba(255,255,255,0.2);
           color: white;
           border: 1px solid rgba(255,255,255,0.3);
@@ -61,18 +60,16 @@
           transition: background 0.3s;
       }
 
-      .disconnect-btn:hover {
+      .logout-btn:hover {
           background: rgba(255,255,255,0.3);
       }
 
-      /* Main Container */
       .main-container {
           display: flex;
           flex: 1;
           overflow: hidden;
       }
 
-      /* Chat Container */
       .chat-container {
           flex: 1;
           display: flex;
@@ -84,7 +81,6 @@
           overflow: hidden;
       }
 
-      /* Messages Area */
       .messages-area {
           flex: 1;
           overflow-y: auto;
@@ -153,11 +149,6 @@
           border-bottom-left-radius: 4px;
       }
 
-      .message-content strong {
-          color: #333;
-          font-weight: 600;
-      }
-
       .agent-badge {
           display: inline-block;
           background: #667eea;
@@ -200,7 +191,6 @@
           }
       }
 
-      /* Input Area */
       .input-area {
           padding: 20px 30px;
           background: white;
@@ -237,7 +227,7 @@
           box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
       }
 
-      .send-btn:hover {
+      .send-btn:hover:not(:disabled) {
           transform: translateY(-2px);
           box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
       }
@@ -249,7 +239,6 @@
           transform: none;
       }
 
-      /* Welcome Message */
       .welcome-message {
           text-align: center;
           padding: 60px 20px;
@@ -294,7 +283,6 @@
           transform: translateX(5px);
       }
 
-      /* Scrollbar */
       .messages-area::-webkit-scrollbar {
           width: 6px;
       }
@@ -312,7 +300,6 @@
           background: #555;
       }
 
-      /* Responsive */
       @media (max-width: 768px) {
           .message-content {
               max-width: 85%;
@@ -332,30 +319,25 @@
 
 <body>
 
-  <!-- Header -->
   <div class="header">
     <h1>
       <span>🏦</span>
       <span>Bank AI Assistant</span>
     </h1>
     <div class="header-info">
+      <div class="info-badge" id="nameBadge">👤 Loading...</div>
       <div class="info-badge" id="accountsBadge">📊 Loading...</div>
-      <div class="info-badge" id="transactionsBadge">💳 Loading...</div>
-      <button class="disconnect-btn" onclick="disconnect()">🚪 Disconnect</button>
+      <button class="logout-btn" onclick="logout()">🚪 Logout</button>
     </div>
   </div>
 
-  <!-- Main Container -->
   <div class="main-container">
-
-    <!-- Chat Container -->
     <div class="chat-container">
       
-      <!-- Messages Area -->
       <div class="messages-area" id="messagesArea">
         <div class="welcome-message">
           <h2>👋 Welcome to Bank AI Assistant!</h2>
-          <p>I'm your personal financial advisor. Ask me anything about your finances in natural language, and I'll give you clear, concise answers.</p>
+          <p>I'm your personal financial advisor. Ask me anything about your finances in natural language.</p>
           <div class="suggestions">
             <button class="suggestion-btn" onclick="sendSuggestion('What\'s my current balance?')">
               💰 What's my current balance?
@@ -373,7 +355,6 @@
         </div>
       </div>
 
-      <!-- Input Area -->
       <div class="input-area">
         <input 
           type="text" 
@@ -387,31 +368,54 @@
       </div>
 
     </div>
-
   </div>
 
   <script>
-    let itemId = null;
+    let sessionId = null;
+    let userName = null;
 
-    // Check if user is authenticated
     window.onload = function() {
-      itemId = sessionStorage.getItem('item_id');
+      sessionId = sessionStorage.getItem('session_id');
+      userName = sessionStorage.getItem('name');
+      const phone = sessionStorage.getItem('phone');
       
-      if (!itemId) {
-        alert('Please connect your bank account first');
+      if (!sessionId) {
+        alert('Please login first');
         window.location.href = '/';
         return;
       }
-
-      // Load account info
-      const accountsCount = sessionStorage.getItem('accounts_count') || 0;
-      const transactionsCount = sessionStorage.getItem('transactions_count') || 0;
       
-      document.getElementById('accountsBadge').textContent = `📊 ${accountsCount} Accounts`;
-      document.getElementById('transactionsBadge').textContent = `💳 ${transactionsCount} Transactions`;
+      // Verify session is still valid
+      verifySession();
+      
+      // Update header
+      const accountsCount = sessionStorage.getItem('accounts_count') || 0;
+      const totalBalance = sessionStorage.getItem('total_balance') || '0.00';
+      
+      document.getElementById('nameBadge').textContent = `👤 ${userName || phone}`;
+      document.getElementById('accountsBadge').textContent = `📊 ${accountsCount} Accounts | $${totalBalance}`;
     };
 
-    // Send suggested question
+    async function verifySession() {
+      try {
+        const response = await fetch('/verify_session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.valid) {
+          alert('Your session has expired. Please login again.');
+          sessionStorage.clear();
+          window.location.href = '/';
+        }
+      } catch (error) {
+        console.error('Session verification failed:', error);
+      }
+    }
+
     function sendSuggestion(text) {
       document.getElementById('messageInput').value = text;
       sendMessage();
@@ -421,17 +425,14 @@
       const input = document.getElementById('messageInput');
       const message = input.value.trim();
       
-      if (!message || !itemId) return;
+      if (!message || !sessionId) return;
 
-      // Disable input
       input.disabled = true;
       document.getElementById('sendBtn').disabled = true;
 
-      // Add user message
       addMessage(message, 'user');
       input.value = '';
 
-      // Add typing indicator
       const typingId = 'typing-' + Date.now();
       addTypingIndicator(typingId);
 
@@ -440,18 +441,22 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            item_id: itemId,
+            session_id: sessionId,
             message: message
           })
         });
 
         const data = await response.json();
 
-        // Remove typing indicator
         document.getElementById(typingId)?.remove();
 
         if (data.success) {
           addMessage(data.response, 'assistant', data.agent_used);
+        } else if (data.session_expired) {
+          alert('Your session has expired. Please login again.');
+          sessionStorage.clear();
+          window.location.href = '/';
+          return;
         } else {
           addMessage(`Sorry, I encountered an error: ${data.error}`, 'assistant');
         }
@@ -495,7 +500,6 @@
     function addMessage(text, sender, agent = null) {
       const messagesArea = document.getElementById('messagesArea');
       
-      // Remove welcome message if exists
       const welcome = messagesArea.querySelector('.welcome-message');
       if (welcome) welcome.remove();
 
@@ -518,7 +522,6 @@
 
       const textNode = document.createElement('div');
       
-      // Format the text if it's from assistant
       if (sender === 'assistant') {
         textNode.innerHTML = formatAssistantMessage(text);
       } else {
@@ -534,36 +537,39 @@
       messagesArea.scrollTop = messagesArea.scrollHeight;
     }
 
-    // Format assistant messages - simple and clean for voice
     function formatAssistantMessage(text) {
-      // Replace **bold** with <strong>
       text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      
-      // Highlight dollar amounts
       text = text.replace(/(\$[\d,]+\.?\d*)/g, '<span style="color: #667eea; font-weight: 600;">$1</span>');
-      
-      // Highlight percentages
       text = text.replace(/(\d+\.?\d*%)/g, '<span style="color: #667eea; font-weight: 600;">$1</span>');
-      
-      // Simple line breaks (but don't overdo it)
       text = text.replace(/\n\n/g, '<br><br>');
-      
       return text;
     }
 
-    function disconnect() {
-      if (confirm('Are you sure you want to disconnect? You will need to reconnect your bank account.')) {
+    async function logout() {
+      if (confirm('Are you sure you want to logout?')) {
+        try {
+          await fetch('/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId })
+          });
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
+        
         sessionStorage.clear();
         window.location.href = '/';
       }
     }
 
-    // Enter key to send
     document.getElementById('messageInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         sendMessage();
       }
     });
+    
+    // Verify session every 5 minutes
+    setInterval(verifySession, 5 * 60 * 1000);
   </script>
 
 </body>

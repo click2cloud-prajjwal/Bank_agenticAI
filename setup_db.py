@@ -9,7 +9,7 @@ load_dotenv()
 SQL_SERVER = os.getenv("SQL_SERVER")
 SQL_DATABASE = os.getenv("SQL_DATABASE", "BankData")
 SQL_DRIVER = os.getenv("SQL_DRIVER", "ODBC Driver 17 for SQL Server")
-SQL_TRUSTED = os.getenv("SQL_TRUSTED_CONNECTION", "yes")
+SQL_TRUSTED = os.getenv("SQL_TRUSTED_CONNECTION", "No")
 SQL_USERNAME = os.getenv("SQL_USERNAME")
 SQL_PASSWORD = os.getenv("SQL_PASSWORD")
 

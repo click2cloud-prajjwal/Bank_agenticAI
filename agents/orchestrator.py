@@ -1,14 +1,13 @@
-# orchestrator.py
+# agents/orchestrator.py - Updated for Phone-based Authentication
 from agents.router_agent import RouterAgent
 from agents.account_agent import AccountAgent
 from agents.transaction_agent import TransactionAgent
 from agents.financial_advisor_agent import FinancialAdvisorAgent
 from agents.analytics_agent import AnalyticsAgent
 from tools.database_tools import DatabaseTools
-import json
 
 class Orchestrator:
-    """Coordinates all agents with conversation memory"""
+    """Coordinates all agents with conversation memory - Phone-based"""
 
     def __init__(self):
         self.router = RouterAgent()
@@ -22,24 +21,25 @@ class Orchestrator:
         # Store conversation history per session
         self.conversations = {}  # {session_id: [messages]}
 
-    def process_query(self, item_id: str, query: str, session_id: str = None) -> dict:
-        """Process query with conversation memory"""
-        # Use item_id as session_id if not provided
+    def process_query(self, phone: str, query: str, session_id: str = None) -> dict:
+        """Process query with conversation memory using phone number"""
+        
+        # Use phone as session_id if not provided
         if not session_id:
-            session_id = item_id
+            session_id = phone
         
         # Initialize conversation history for this session
         if session_id not in self.conversations:
             self.conversations[session_id] = []
         
-        # Retrieve user context
-        context = self.db_tools.get_user_context(item_id)
+        # Retrieve user context by phone number
+        context = self.db_tools.get_user_context(phone)
 
         if "error" in context:
             return {
                 "success": False,
                 "error": context["error"],
-                "response": "We were unable to access your account information. Please verify your account linkage."
+                "response": "We were unable to access your account information. Please try logging in again."
             }
 
         # Get conversation history
@@ -59,7 +59,6 @@ class Orchestrator:
         
         # Step 1: Route the query
         if is_ending:
-            # User is ending conversation - send to general handler
             intent = "GENERAL"
             confidence = 1.0
         else:
@@ -127,7 +126,7 @@ class Orchestrator:
         
         # Check if it's a conversation ender first
         if self._is_conversation_ender(query_lower):
-            return False  # Not a follow-up, it's ending the conversation
+            return False
         
         # Positive follow-up responses
         followup_patterns = [
