@@ -2,6 +2,7 @@
 import json
 from agents.base_agent import BaseAgent
 from tools.database_tools import DatabaseTools
+from tools.user_profile_tools import UserProfileTools
 
 class AccountAgent(BaseAgent):
     """Handles account queries with voice-optimized short responses"""
@@ -14,13 +15,19 @@ class AccountAgent(BaseAgent):
 
 Keep responses SHORT and CONVERSATIONAL like a phone call.
 
+PERSONALIZATION:
+- Use the customer's first name when appropriate
+- Consider their age for age-appropriate advice
+- Reference their location if relevant
+- Make responses feel personal and warm
+
 RESPONSE RULES:
 1. Answer in 1-2 sentences
 2. Give exact numbers clearly
 3. Only mention important details
 4. Sound natural, not robotic
 5. Max 40 words for simple queries
-6. After answering, end with "Anything else?" - NO follow-up questions
+6. After answering, end with "Anything else?" wherever required only. - NO follow-up questions
 
 EXAMPLES:
 
@@ -51,17 +58,25 @@ CRITICAL RULES:
 - Maximum 40-50 words per response"""
         )
         self.db_tools = DatabaseTools()
-    
+        self.profile_tools = UserProfileTools()
+
     def process(self, context: dict, query: str, conversation_history: list = None) -> dict:
         """Process account queries with short responses"""
         
+        profile = context.get("profile", {})
+        user_name = profile.get('full_name', '')
+        first_name = user_name.split()[0] if user_name else ''
+        age = profile.get('age')
+        email = profile.get('email')
+        address = profile.get('address', {})
+
         accounts = context.get("accounts", [])
         summary = context.get("summary", {})
         recent_transactions = context.get("recent_transactions", [])
         
         if not accounts:
             return self.format_response(
-                "I don't see any connected accounts. You'll need to link your bank first.",
+                f"{'Hi ' + first_name + '! ' if first_name else ''}I don't see any connected accounts. You'll need to link your bank first.",
                 metadata={"error": "no_accounts"}
             )
         
@@ -89,6 +104,13 @@ CRITICAL RULES:
         data_summary = f"""
 {conversation_context}
 
+CUSTOMER PROFILE:
+Name: {user_name or 'Not provided'}
+First Name: {first_name or 'Not provided'}
+Age: {age or 'Unknown'}
+Email: {email or 'Not provided'}
+Location: {address.get('city', 'Unknown')}, {address.get('state', 'Unknown')}
+
 ACCOUNT INFO:
 Total Balance: ${total_balance:,.0f}
 Available: ${total_available:,.0f}
@@ -97,9 +119,11 @@ Pending: ${pending_amount:,.0f}
 Accounts ({len(accounts)} total):
 {json.dumps([{
     'name': a['name'],
+    'account_number': a.get('account_number', 'N/A'),
     'type': a['subtype'],
     'balance': f"${a['balance']:.0f}",
-    'available': f"${a['available']:.0f}"
+    'available': f"${a['available']:.0f}",
+    'is_primary': a.get('is_primary', False)
 } for a in accounts], indent=2)}
 
 {"⚠️ LOW BALANCE WARNINGS: " + ", ".join(warnings) if warnings else "All accounts healthy"}
@@ -108,7 +132,7 @@ Recent Activity: {len(recent_transactions)} transactions
 
 CUSTOMER QUESTION: {query}
 
-Give a SHORT, DIRECT answer (1-2 sentences, max 40 words). Sound like a friendly bank teller on the phone."""
+Give a SHORT, DIRECT answer (1-2 sentences, max 40 words). Use their first name "{first_name}" naturally if appropriate. Sound like a friendly bank teller on the phone."""
         
         messages = [
             {"role": "system", "content": self.instructions},
@@ -119,7 +143,7 @@ Give a SHORT, DIRECT answer (1-2 sentences, max 40 words). Sound like a friendly
         
         if response["type"] == "error":
             return self.format_response(
-                "I can't access your accounts right now. Give me a moment and try again.",
+                 f"{'Hi ' + first_name + '! ' if first_name else ''}I can't access your accounts right now. Give me a moment and try again.",
                 metadata={"error": "llm_error"}
             )
         
@@ -128,6 +152,8 @@ Give a SHORT, DIRECT answer (1-2 sentences, max 40 words). Sound like a friendly
             metadata={
                 "accounts_analyzed": len(accounts),
                 "total_balance": total_balance,
-                "warnings": warnings
+                "warnings": warnings,
+                "user_name": user_name,
+                 "user_age": age
             }
         )

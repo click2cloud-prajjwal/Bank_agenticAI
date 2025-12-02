@@ -1,9 +1,15 @@
 # tools/database_tools.py
 from db import get_connection
+from tools.user_profile_tools import UserProfileTools
+from tools.crm_tools import CRMTools
 
 class DatabaseTools:
     """Database query tools for agents - Phone-based authentication"""
     
+    def __init__(self):
+        self.profile_tools = UserProfileTools()
+        self.crm_tools = CRMTools()
+
     def get_user_context(self, phone: str) -> dict:
         """Get complete financial context for a user by phone number"""
         conn = get_connection()
@@ -165,9 +171,44 @@ class DatabaseTools:
                 'dti_ratio': round(dti_ratio, 2),
                 'credit_utilization': round(credit_utilization, 2)
             }
-            
+            #8. User Profile Overview
+            profile = self.profile_tools.get_user_profile(phone)
+            if "error" not in profile:
+                context['profile'] = profile['personal_info']
+                context['accounts'] = profile['accounts_summary']['accounts']
+            else:
+                # Fallback to existing logic
+                cursor.execute("SELECT phone, name FROM users WHERE phone = ?", (phone,))
+                user = cursor.fetchone()
+                if not user:
+                    return {"error": "user_not_found"}
+                
+                context['profile'] = {
+                    'phone': user[0],
+                    'full_name': user[1]
+                }
+            #9. CRM Data Integration
+            crm_data = self.crm_tools.get_crm_data(phone)
+            if "error" not in crm_data:
+                context['crm'] = crm_data
+            else:
+                context['crm'] = {
+                    'service_requests': [],
+                    'interactions': [],
+                    'offers': [],
+                    'flags': [],
+                    'crm_summary': {
+                        'total_service_requests': 0,
+                        'open_tickets': 0,
+                        'total_interactions': 0,
+                        'active_offers': 0,
+                        'total_flags': 0,
+                        'is_vip': False,
+                        'last_interaction': None
+                    }
+                }
             return context
-            
+   
         except Exception as e:
             print(f"❌ Database error: {e}")
             import traceback

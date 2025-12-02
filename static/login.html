@@ -218,12 +218,12 @@
           type="tel" 
           id="phone" 
           name="phone"
-          placeholder="+15551212" 
+          placeholder="Phone number" 
           required
           autocomplete="tel"
           pattern="^\+?[1-9]\d{1,14}$"
         />
-        <div class="help-text">Include country code (e.g., +1 for US)</div>
+        <div class="help-text"></div>
       </div>
 
       <div class="form-group">
@@ -327,14 +327,22 @@
       }
     }
     
-    // Auto-format phone number
+    // Allow + only if user types it manually
     document.getElementById('phone').addEventListener('input', function(e) {
       let value = e.target.value.replace(/[^\d+]/g, '');
-      if (value && !value.startsWith('+')) {
+
+      // DO NOT auto-add '+'
+      // If user types +, keep it. If not, no +.
+      
+      // Prevent multiple +
+      if ((value.match(/\+/g) || []).length > 1) {
+        value = value.replace(/\+/g, '');
         value = '+' + value;
       }
+
       e.target.value = value;
     });
+
     
     // Only allow numbers in MPIN
     document.getElementById('mpin').addEventListener('input', function(e) {

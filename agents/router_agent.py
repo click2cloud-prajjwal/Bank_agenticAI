@@ -25,7 +25,10 @@ Your responsibility is to accurately classify customer queries into ONE of these
 4. ANALYTICS – Trends, patterns, comparisons, projections, spending insights
    Examples: "How's my spending trending?", "Compare this month to last", "Where is my money going?"
 
-5. GENERAL – Greetings, capabilities, unclear queries, general help
+5. 5. CRM_QUERY – Personal information, profile queries, account metadata (NOT balances), customer preferences, SERVICE REQUESTS, OFFERS, FLAGS
+   Examples: "What is my email?", "Show my account numbers", "Do I have any open tickets?", "Am I a VIP?", "Any offers for me?"
+
+6. GENERAL – Greetings, capabilities, unclear queries, general help
    Examples: "Hello", "What can you do?", "Help me"
 
 CLASSIFICATION RULES:
@@ -37,9 +40,19 @@ CLASSIFICATION RULES:
 - If query asks about loan/mortgage/car affordability, choose FINANCIAL_ADVICE
 - If query asks "why" about spending patterns, choose ANALYTICS
 
+CLASSIFICATION RULES FOR CRM_QUERY:
+- Use CRM_QUERY for ANY question about personal information: name, age, DOB, email, phone, address
+- Use CRM_QUERY for account metadata: account numbers, account names, account types, primary account
+- Use CRM_QUERY for SERVICE REQUESTS: tickets, complaints, open issues
+- Use CRM_QUERY for OFFERS: pre-approved loans/cards, eligibility
+- Use CRM_QUERY for FLAGS: VIP status, customer tier, risk profile
+- Use CRM_QUERY for INTERACTION HISTORY: "what did we discuss", "last time"
+- DO NOT use CRM_QUERY for account balances (use ACCOUNT_QUERY instead)
+- DO NOT use CRM_QUERY for transactions (use TRANSACTION_QUERY instead)
+
 Return ONLY a JSON object:
 {
-    "intent": "ACCOUNT_QUERY|TRANSACTION_QUERY|FINANCIAL_ADVICE|ANALYTICS|GENERAL",
+    "intent": "ACCOUNT_QUERY|TRANSACTION_QUERY|FINANCIAL_ADVICE|ANALYTICS|CRM_QUERY|GENERAL",
     "confidence": 0.0-1.0,
     "entities": {
         "account_type": "checking|savings|credit|all",
@@ -48,6 +61,7 @@ Return ONLY a JSON object:
         "category": "dining|shopping|groceries|etc",
         "loan_type": "mortgage|auto|personal",
         "comparison_type": "month_over_month|year_over_year|historical"
+        "profile_field": "name|email|phone|address|dob|age|account_number|account_type|full_profile"
     },
     "reasoning": "Brief explanation of classification"
 }
@@ -102,7 +116,7 @@ User Context:
             classification = json.loads(content)
             
             # Validate classification
-            valid_intents = ["ACCOUNT_QUERY", "TRANSACTION_QUERY", "FINANCIAL_ADVICE", "ANALYTICS", "GENERAL"]
+            valid_intents = ["ACCOUNT_QUERY", "TRANSACTION_QUERY", "FINANCIAL_ADVICE", "ANALYTICS", "CRM_QUERY", "GENERAL"]
             if classification.get("intent") not in valid_intents:
                 classification["intent"] = "GENERAL"
                 classification["confidence"] = 0.5

@@ -1,6 +1,7 @@
 # agents/transaction_agent.py
 from agents.base_agent import BaseAgent
 from collections import defaultdict
+from tools.user_profile_tools import UserProfileTools
 import json
 
 class TransactionAgent(BaseAgent):
@@ -14,12 +15,18 @@ class TransactionAgent(BaseAgent):
 
 Keep responses BRIEF and CONVERSATIONAL.
 
+PERSONALIZATION:
+- Use the customer's first name naturally to build rapport
+- Consider their email for sending receipts/summaries if relevant
+- Reference their location for local merchant context
+- Make interactions feel personal and attentive
+
 RESPONSE RULES:
 1. Start with the key finding (1 sentence)
 2. Give 2-3 supporting details
 3. Max 50 words for simple queries
 4. Sound natural and friendly
-5. After answering, end with "What else can I help you with?" - NO additional follow-up questions
+5. After answering, end with "What else can I help you with?" wherever required only. - NO additional follow-up questions
 
 EXAMPLES:
 
@@ -49,10 +56,22 @@ CRITICAL RULES:
 - Just answer their question, then ask if they need anything else
 - Maximum 50-60 words per response"""
         )
-    
+
+        self.profile_tools = UserProfileTools()
+
     def process(self, context: dict, query: str, conversation_history: list = None) -> dict:
         """Process transaction queries with short responses"""
         
+        #Get user profile
+        profile = context.get("profile", {})
+        user_name = profile.get('full_name', '')
+        first_name = user_name.split()[0] if user_name else ''
+        age = profile.get('age')
+        email = profile.get('email')
+        address = profile.get('address', {})
+        city = address.get('city', '') if address else ''
+        state = address.get('state', '') if address else ''
+
         transactions = context.get("recent_transactions", [])
         spending = context.get("spending_summary", [])
         
@@ -74,6 +93,16 @@ CRITICAL RULES:
                 by_category[category]['count'] += 1
         
         top_categories = sorted(by_category.items(), key=lambda x: x[1]['amount'], reverse=True)[:3]
+
+        #Location-based merchant analysis (merchants in user's city)
+        local_merchants = []
+        if city:
+            for t in transactions[:20]:  # Check recent 20 transactions
+                merchant = t.get('merchant', '')
+                if merchant and city.lower() in merchant.lower():
+                    local_merchants.append(merchant)
+        
+        local_spending = len(set(local_merchants)) if local_merchants else 0
         
         # Find unusual large transactions
         if transactions:
@@ -100,6 +129,11 @@ CRITICAL RULES:
         query_lower = query.lower()
         wants_details = any(word in query_lower for word in [
             'why', 'explain', 'detail', 'breakdown', 'more', 'tell me more'
+        ])
+
+        #Check if user wants to send/email transactions
+        wants_email = any(word in query_lower for word in [
+            'send', 'email', 'mail me', 'receipt', 'summary'
         ])
         
         # Build conversation context
@@ -152,6 +186,9 @@ CUSTOMER QUESTION: {query}
             metadata={
                 "transactions_analyzed": len(transactions),
                 "total_spent": round(total_spent, 2),
-                "categories": len(by_category)
+                "categories": len(by_category),
+                "user_name": user_name,
+                "user_age": age,
+                "local_merchants": local_spending
             }
         )

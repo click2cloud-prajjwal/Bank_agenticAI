@@ -2,6 +2,7 @@
 from agents.base_agent import BaseAgent
 import json
 from collections import defaultdict
+from tools.user_profile_tools import UserProfileTools
 
 class AnalyticsAgent(BaseAgent):
     """Generates insights with voice-optimized short responses"""
@@ -14,12 +15,18 @@ class AnalyticsAgent(BaseAgent):
 
 Keep responses SHORT and INSIGHTFUL.
 
+PERSONALIZATION:
+- Use the customer's first name occasionally for warmth
+- Consider their age for age-appropriate financial advice
+- Reference their location for regional context if relevant
+- Tailor recommendations based on their life stage
+
 RESPONSE RULES:
 1. Start with the KEY INSIGHT (1 sentence)
 2. Give 2-3 supporting facts
 3. Max 60 words total
 4. Sound conversational
-5. After detailed answers, end with "What else can I help you with?" - NO additional follow-up questions
+5. After detailed answers, end with "What else can I help you with?" wherever required only. - NO additional follow-up questions
 
 EXAMPLES:
 
@@ -46,10 +53,21 @@ CRITICAL RULES:
 - Just answer, then ask if they need anything else
 - Maximum 60-70 words per response"""
         )
-    
+        self.profile_tools = UserProfileTools()
+        
     def process(self, context: dict, query: str, conversation_history: list = None) -> dict:
         """Process analytics with short, actionable insights"""
         
+        #Get user profile
+        profile = context.get("profile", {})
+        user_name = profile.get('full_name', '')
+        first_name = user_name.split()[0] if user_name else ''
+        age = profile.get('age')
+        email = profile.get('email')
+        address = profile.get('address', {})
+        city = address.get('city', '') if address else ''
+        state = address.get('state', '') if address else ''
+
         spending = context.get("spending_summary", [])
         transactions = context.get("recent_transactions", [])
         metrics = context.get("metrics", {})
@@ -94,6 +112,18 @@ CRITICAL RULES:
         monthly_savings = monthly_income - monthly_obligations - latest_expenses
         savings_rate = (monthly_savings / monthly_income * 100) if monthly_income > 0 else 0
         
+        #Age-based insights
+        age_context = ""
+        if age:
+            if age < 30:
+                age_context = "At your age, building emergency savings and paying off high-interest debt should be priorities."
+            elif 30 <= age < 45:
+                age_context = "Given your life stage, balancing savings, investments, and debt management is key."
+            elif 45 <= age < 60:
+                age_context = "At this point, maximizing retirement contributions and reducing debt is important."
+            else:
+                age_context = "Focus on preserving wealth and planning for retirement income needs."
+
         # Check if wants details
         query_lower = query.lower()
         wants_details = any(word in query_lower for word in [
@@ -113,6 +143,13 @@ CRITICAL RULES:
         data_summary = f"""
 {conversation_context}
 
+CUSTOMER PROFILE:
+Name: {user_name or 'Not provided'}
+First Name: {first_name or 'Not provided'}
+Age: {age or 'Unknown'}
+Location: {city}, {state}
+Age-Based Context: {age_context}
+
 ANALYTICS SUMMARY:
 Monthly Income: ${monthly_income:,.0f}
 Current Month Expenses: ${latest_expenses:,.0f}
@@ -131,7 +168,7 @@ Top 3 Spending Categories:
 
 CUSTOMER QUESTION: {query}
 
-{"Provide 2-3 specific insights with numbers (max 60 words)" if wants_details else "Give ONE key insight with ONE supporting fact (max 40 words)"} Be conversational."""
+{"Provide 2-3 specific insights with numbers (max 60 words)" if wants_details else "Give ONE key insight with ONE supporting fact (max 40 words)"}. Use their first name "{first_name}" naturally if appropriate. Consider their age ({age}) for relevant advice. Be conversational."""
         
         messages = [
             {"role": "system", "content": self.instructions},
@@ -142,7 +179,7 @@ CUSTOMER QUESTION: {query}
         
         if response["type"] == "error":
             return self.format_response(
-                "I can't generate analytics right now. Try again in a moment.",
+                 f"{'Hi ' + first_name + '! ' if first_name else ''}I can't generate analytics right now. Try again in a moment.",
                 metadata={"error": "llm_error"}
             )
         
@@ -151,6 +188,9 @@ CUSTOMER QUESTION: {query}
             metadata={
                 "months_analyzed": len(spending),
                 "savings_rate": round(savings_rate, 1),
-                "categories_analyzed": len(top_categories)
+                "categories_analyzed": len(top_categories),
+                "user_name": user_name,
+                "user_age": age,
+                "age_context_provided": bool(age_context)
             }
         )

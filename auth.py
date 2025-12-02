@@ -122,7 +122,7 @@ class AuthService:
             session_id = secrets.token_urlsafe(32)
             
             # Session expires in 24 hours
-            expires_at = datetime.utcnow() + timedelta(hours=24)
+            expires_at = datetime.now() + timedelta(hours=24)
             
             # Get primary account for this user
             cursor.execute("""

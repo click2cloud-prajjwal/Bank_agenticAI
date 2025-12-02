@@ -4,6 +4,7 @@ from agents.account_agent import AccountAgent
 from agents.transaction_agent import TransactionAgent
 from agents.financial_advisor_agent import FinancialAdvisorAgent
 from agents.analytics_agent import AnalyticsAgent
+from agents.crm_agent import CRMAgent
 from tools.database_tools import DatabaseTools
 
 class Orchestrator:
@@ -15,7 +16,8 @@ class Orchestrator:
             "ACCOUNT_QUERY": AccountAgent(),
             "TRANSACTION_QUERY": TransactionAgent(),
             "FINANCIAL_ADVICE": FinancialAdvisorAgent(),
-            "ANALYTICS": AnalyticsAgent()
+            "ANALYTICS": AnalyticsAgent(),
+            "CRM_QUERY": CRMAgent() 
         }
         self.db_tools = DatabaseTools()
         # Store conversation history per session
@@ -40,6 +42,18 @@ class Orchestrator:
                 "success": False,
                 "error": context["error"],
                 "response": "We were unable to access your account information. Please try logging in again."
+            }
+
+        #VERIFICATION: Ensure profile data exists in context
+        if 'profile' not in context or not context['profile']:
+            print(f"⚠️ Warning: Profile data missing for {phone}")
+            # Add minimal profile data as fallback
+            context['profile'] = {
+                'phone': phone,
+                'full_name': 'Valued Customer',
+                'age': None,
+                'email': None,
+                'address': None
             }
 
         # Get conversation history
@@ -173,46 +187,59 @@ class Orchestrator:
             "Account Specialist": "ACCOUNT_QUERY",
             "Transaction Analyst": "TRANSACTION_QUERY",
             "Financial Advisor": "FINANCIAL_ADVICE",
-            "Analytics Specialist": "ANALYTICS"
+            "Analytics Specialist": "ANALYTICS",
+            "CRM Specialist": "CRM_QUERY"
         }
         return agent_to_intent.get(agent_name, "GENERAL")
 
     def _handle_general(self, query: str, context: dict, history: list) -> str:
-        """Handle general queries with conversation awareness"""
+        """Handle general queries - greetings, help, thanks"""
         query_lower = query.lower()
+        
+        profile = context.get("profile", {})
+        full_name = profile.get('full_name', '')
+        first_name = full_name.split()[0] if full_name and full_name != 'Valued Customer' else ''
+        greeting_name = f" {first_name}" if first_name else ""
 
-        # Check if user is ending conversation
+        # Conversation enders
         if self._is_conversation_ender(query_lower):
-            return "Great! If you need anything else, just let me know. Have a good day!"
+            return f"Great{greeting_name}! If you need anything else, just let me know. Have a good day!"
 
-        # If it's a follow-up "yes" after a general greeting
+        # Follow-up handling
         if history and any(word in query_lower for word in ["yes", "sure", "ok", "yeah"]):
             last_response = history[-1].get('bot_response', '').lower()
             if 'help' in last_response or 'assist' in last_response:
                 return (
-                    "I can help you with account balances, recent transactions, spending analysis, "
-                    "and financial advice like loan eligibility. What would you like to know?"
+                    f"I can help you with account balances, recent transactions, spending analysis, "
+                    f"financial advice, and your personal profile. What would you like to know{greeting_name}?"
                 )
 
-        if any(w in query_lower for w in ["hello", "hi", "hey"]):
-            name = context.get("identity", {}).get("name", "")
-            greeting = f"Hello {name}!" if name else "Hello!"
-            return f"{greeting} How can I assist you with your finances today?"
+        # Greetings
+        if any(w in query_lower for w in ["hello", "hi", "hey", "good morning", "good afternoon"]):
+            greeting = f"Hello{greeting_name}!" if first_name else "Hello!"
+            return f"{greeting} How can I assist you today?"
 
-        elif any(w in query_lower for w in ["help", "what can you do", "capabilities"]):
+        # Help/Capabilities
+        elif any(w in query_lower for w in ["help", "what can you do", "capabilities", "how can you help"]):
             return (
-                "I can help you with account balances, transaction history, spending analysis, "
-                "and financial advice. What would you like to know?"
+                f"I can help you{greeting_name} with:\n"
+                f"• Account balances and status\n"
+                f"• Transaction history and spending\n"
+                f"• Financial advice and loan eligibility\n"
+                f"• Spending analytics and trends\n"
+                f"• Your personal profile and information\n\n"
+                f"What would you like to know?"
             )
 
-        elif any(w in query_lower for w in ["thank", "thanks"]):
-            return "You're welcome! Let me know if you need anything else."
+        # Thanks
+        elif any(w in query_lower for w in ["thank", "thanks", "appreciate"]):
+            return f"You're welcome{greeting_name}! Let me know if you need anything else."
 
+        # Default
         return (
-            "I'm here to help with your finances. Ask me about your accounts, "
-            "transactions, spending, or financial advice."
+            f"I'm here to help with your finances{greeting_name}. Ask me about your accounts, "
+            f"transactions, spending, financial advice, or your profile information."
         )
-        
     def clear_conversation(self, session_id: str):
         """Clear conversation history for a session"""
         if session_id in self.conversations:

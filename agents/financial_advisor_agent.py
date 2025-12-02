@@ -1,6 +1,7 @@
 # agents/financial_advisor_agent.py
 from agents.base_agent import BaseAgent
 from tools.calculation_tools import CalculationTools
+from tools.user_profile_tools import UserProfileTools
 import json
 
 class FinancialAdvisorAgent(BaseAgent):
@@ -11,6 +12,13 @@ class FinancialAdvisorAgent(BaseAgent):
             name="Financial Advisor",
             role="Financial Planning & Eligibility Expert",
             instructions="""You are a financial advisor for a voice-based banking assistant. Your responses must be SHORT and CONVERSATIONAL like a real phone conversation.
+
+PERSONALIZATION:
+- Address the customer by their first name naturally
+- Consider their age for life-stage appropriate advice
+- Reference their location for regional considerations (property values, taxes)
+- Tailor loan recommendations based on their life stage
+- Be empathetic to their financial situation
 
 CRITICAL RULES FOR VOICE INTERACTIONS:
 1. Give the ANSWER FIRST in 1-2 sentences
@@ -34,7 +42,7 @@ Step 2 - Detailed Response (ONLY if user says yes/more/why/details):
 - DO NOT ask follow-up questions about their situation
 - DO NOT offer additional services unless asked
 
-CRITICAL: After giving detailed explanation, ALWAYS end with "Do you have any other questions?" or similar. NEVER ask additional follow-up questions like "Would you like advice on..." or "Should I explain...". Just wrap up and ask if they need anything else.
+CRITICAL: After giving detailed explanation, wherever required only end with "Do you have any other questions?" or similar. NEVER ask additional follow-up questions like "Would you like advice on..." or "Should I explain...". Just wrap up and ask if they need anything else.
 
 EXAMPLES:
 
@@ -88,10 +96,21 @@ REMEMBER:
 - Keep it conversational like a real phone call."""
         )
         self.calc_tools = CalculationTools()
-    
+        self.profile_tools = UserProfileTools()
+
     def process(self, context: dict, query: str, conversation_history: list = None) -> dict:
         """Process financial advice with voice-optimized responses"""
         
+        # 🆕 Get user profile
+        profile = context.get("profile", {})
+        user_name = profile.get('full_name', '')
+        first_name = user_name.split()[0] if user_name else ''
+        age = profile.get('age')
+        email = profile.get('email')
+        address = profile.get('address', {})
+        city = address.get('city', '') if address else ''
+        state = address.get('state', '') if address else ''
+
         metrics = context.get("metrics", {})
         income = context.get("income", [])
         liabilities = context.get("liabilities", [])
@@ -145,6 +164,30 @@ REMEMBER:
             monthly_savings = monthly_income - monthly_obligations - avg_monthly_expenses
             savings_rate = (monthly_savings / monthly_income) * 100
         
+        # 🆕 Age-based financial advice context
+        age_context = ""
+        loan_term_note = ""
+        if age:
+            if age < 30:
+                age_context = "At your age, you have time on your side for long-term loans and building wealth."
+                max_loan_years = 30
+            elif 30 <= age < 45:
+                age_context = "Given your life stage, balance loan terms with retirement planning."
+                max_loan_years = min(30, 65 - age)
+            elif 45 <= age < 60:
+                age_context = "At this stage, consider shorter loan terms to be debt-free before retirement."
+                max_loan_years = max(15, 65 - age)
+            else:
+                age_context = "Given your age, focus on minimizing new debt and preserving assets."
+                max_loan_years = max(10, 65 - age)
+            
+            loan_term_note = f"Recommended maximum loan term: {max_loan_years} years (to align with retirement at 65)."
+        
+        # 🆕 Location-based context (for property advice)
+        location_context = ""
+        if city and state:
+            location_context = f"For reference, you're in {city}, {state}. Local property values and taxes may affect affordability."
+
         # Check if this is a follow-up request for details
         is_followup = False
         if conversation_history:
@@ -169,6 +212,17 @@ REMEMBER:
         
         data_summary = f"""
 {conversation_context}
+
+CUSTOMER PROFILE:
+Name: {user_name or 'Not provided'}
+First Name: {first_name or 'Not provided'}
+Age: {age or 'Unknown'}
+Email: {email or 'Not provided'}
+Location: {city}, {state}
+
+Age-Based Context: {age_context}
+{loan_term_note}
+{location_context}
 
 FINANCIAL PROFILE SUMMARY:
 Monthly Income: ${monthly_income:,.0f}
@@ -219,6 +273,10 @@ CUSTOMER QUESTION: {query}
                 "disposable_income": round(disposable_income, 2),
                 "max_home_price": mortgage_calc.get('max_home_price', 0),
                 "max_auto_price": auto_calc.get('max_auto_price', 0),
-                "is_followup": is_followup
+                "is_followup": is_followup,
+                "user_name": user_name,
+                "user_age": age,
+                "user_location": f"{city}, {state}" if city and state else None,
+                "age_context_provided": bool(age_context)
             }
         )
