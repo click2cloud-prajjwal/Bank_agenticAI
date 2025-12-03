@@ -188,7 +188,7 @@ class Orchestrator:
             "Transaction Analyst": "TRANSACTION_QUERY",
             "Financial Advisor": "FINANCIAL_ADVICE",
             "Analytics Specialist": "ANALYTICS",
-            "CRM Specialist": "CRM_QUERY"
+            "Customer Support Specialist": "CRM_QUERY"
         }
         return agent_to_intent.get(agent_name, "GENERAL")
 

@@ -175,7 +175,7 @@ class DatabaseTools:
             profile = self.profile_tools.get_user_profile(phone)
             if "error" not in profile:
                 context['profile'] = profile['personal_info']
-                context['accounts'] = profile['accounts_summary']['accounts']
+                # context['accounts'] = profile['accounts_summary']['accounts']
             else:
                 # Fallback to existing logic
                 cursor.execute("SELECT phone, name FROM users WHERE phone = ?", (phone,))

@@ -50,6 +50,20 @@ CLASSIFICATION RULES FOR CRM_QUERY:
 - DO NOT use CRM_QUERY for account balances (use ACCOUNT_QUERY instead)
 - DO NOT use CRM_QUERY for transactions (use TRANSACTION_QUERY instead)
 
+HARD RULE:
+If the query contains:
+- "balance"
+- "account balance"
+- "total balance"
+- "available balance"
+- "current balance"
+- "how much do I have"
+- "money in my account"
+Then ALWAYS classify as ACCOUNT_QUERY.
+NEVER classify these as CRM_QUERY.
+This rule overrides all other rules.
+
+
 Return ONLY a JSON object:
 {
     "intent": "ACCOUNT_QUERY|TRANSACTION_QUERY|FINANCIAL_ADVICE|ANALYTICS|CRM_QUERY|GENERAL",
